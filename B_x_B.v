@@ -12,6 +12,74 @@ assign out_4 = in_2 - in_4;
 
 endmodule
 
+// module Bx_B_single
+// (
+//     input clk,
+//     input rst,
+//     input signed [31:0] in,
+//     output signed [31:0] out
+// );
+
+// // INTERNAL
+// wire signed [31:0] in_d1, in_d2, in_d3;
+// wire signed [31:0] pre_out_1, pre_out_2, pre_out_3, pre_out_4;
+// wire signed [31:0] sel_R1, sel_R2, sel_R3;
+
+// // STATE VARIABLE
+// reg [2:0] state;
+// wire [2:0] next_state;
+
+// // PORT MAP
+// delay32b D1(
+//     .clk(clk),
+//     .rst(rst),
+//     .in(sel_R1),
+//     .out(in_d1)
+// );
+// delay32b D2(
+//     .clk(clk),
+//     .rst(rst),
+//     .in(sel_R2),
+//     .out(in_d2)
+// );
+// delay32b D3(
+//     .clk(clk),
+//     .rst(rst),
+//     .in(sel_R3),
+//     .out(in_d3)
+// );
+
+// // REGISTER INPUT SWITCH
+// assign sel_R1 = in;
+// assign sel_R2 = (state == 3'b100) ? in_d3 : in_d1;
+// assign sel_R3 = (state == 3'b100) ? in_d1 : in_d2;
+
+// // COMPUTATION
+// assign pre_out_1 = in_d2 - in;
+// assign pre_out_2 = in_d1 + in_d2;
+// assign pre_out_3 = in_d2 - in_d3;
+// assign pre_out_4 = pre_out_3;
+
+// // OUTPUT BASED ON STATE
+// assign out = (state == 3'b010) ? pre_out_1 :
+//              (state == 3'b011) ? pre_out_2 :
+//              (state == 3'b100) ? pre_out_3 :
+//              (state == 3'b101) ? pre_out_4 : 32'h0000;
+
+// // NEXT STATE GENERATOR
+// assign next_state = (state == 3'b101) ? 0 : state + 3'b001;
+// always @(posedge(clk)) begin
+//     if (!rst) begin
+//         state <= 3'b000;
+//     end
+//     else begin
+//         state <= next_state;
+//     end
+// end
+
+// endmodule
+
+// 4 clock per process, but having more 1 register column
 module Bx_B_single
 (
     input clk,
@@ -21,9 +89,8 @@ module Bx_B_single
 );
 
 // INTERNAL
-wire signed [31:0] in_d1, in_d2, in_d3;
+wire signed [31:0] in_d1, in_d2, in_d3, in_d4;
 wire signed [31:0] pre_out_1, pre_out_2, pre_out_3, pre_out_4;
-wire signed [31:0] sel_R1, sel_R2, sel_R3;
 
 // STATE VARIABLE
 reg [2:0] state;
@@ -33,44 +100,45 @@ wire [2:0] next_state;
 delay32b D1(
     .clk(clk),
     .rst(rst),
-    .in(sel_R1),
+    .in(in),
     .out(in_d1)
 );
 delay32b D2(
     .clk(clk),
     .rst(rst),
-    .in(sel_R2),
+    .in(in_d1),
     .out(in_d2)
 );
 delay32b D3(
     .clk(clk),
     .rst(rst),
-    .in(sel_R3),
+    .in(in_d2),
     .out(in_d3)
 );
-
-// REGISTER INPUT SWITCH
-assign sel_R1 = in;
-assign sel_R2 = (state == 3'b100) ? in_d3 : in_d1;
-assign sel_R3 = (state == 3'b100) ? in_d1 : in_d2;
+delay32b D4(
+    .clk(clk),
+    .rst(rst),
+    .in(in_d3),
+    .out(in_d4)
+);
 
 // COMPUTATION
 assign pre_out_1 = in_d2 - in;
 assign pre_out_2 = in_d1 + in_d2;
 assign pre_out_3 = in_d2 - in_d3;
-assign pre_out_4 = pre_out_3;
+assign pre_out_4 = in_d4 - in_d2;
 
 // OUTPUT BASED ON STATE
-assign out = (state == 3'b010) ? pre_out_1 :
-             (state == 3'b011) ? pre_out_2 :
-             (state == 3'b100) ? pre_out_3 :
-             (state == 3'b101) ? pre_out_4 : 32'h0000;
+assign out = (state == 3'b000) ? pre_out_1 :
+             (state == 3'b001) ? pre_out_2 :
+             (state == 3'b010) ? pre_out_3 :
+             (state == 3'b011) ? pre_out_4 : 32'h0000;
 
 // NEXT STATE GENERATOR
-assign next_state = (state == 3'b101) ? 0 : state + 3'b001;
+assign next_state = (state == 3'b011) ? 0 : state + 3'b001;
 always @(posedge(clk)) begin
     if (!rst) begin
-        state <= 3'b000;
+        state <= 3'b010;
     end
     else begin
         state <= next_state;
